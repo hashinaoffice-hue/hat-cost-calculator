@@ -93,19 +93,25 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# [기능] 엑셀 변환 함수 (디버깅 모드)
+# [기능] 엑셀 변환 함수 (수정됨: vcenter -> valign)
 # ---------------------------------------------------------
 def to_excel(df):
     try:
         output = BytesIO()
-        # xlsxwriter 엔진을 사용하여 엑셀 생성
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df.to_excel(writer, index=False, sheet_name='Sheet1') # 시트명 단순화 (에러 방지)
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
             workbook = writer.book
             worksheet = writer.sheets['Sheet1']
             
-            # 스타일 설정
-            header_fmt = workbook.add_format({'bold': True, 'fg_color': '#e9ecef', 'border': 1, 'align': 'center', 'vcenter': True})
+            # ★ 여기가 수정되었습니다! (vcenter -> valign)
+            header_fmt = workbook.add_format({
+                'bold': True, 
+                'fg_color': '#e9ecef', 
+                'border': 1, 
+                'align': 'center', 
+                'valign': 'vcenter' 
+            })
+            
             for col_num, value in enumerate(df.columns.values):
                 worksheet.write(0, col_num, value, header_fmt)
                 worksheet.set_column(col_num, col_num, 15)
@@ -113,8 +119,7 @@ def to_excel(df):
         return output.getvalue()
         
     except Exception as e:
-        # ★ 여기가 중요합니다! 에러 내용을 화면에 빨갛게 출력합니다.
-        st.error(f"🚨 시스템 에러 발생 (개발자 확인용): {e}")
+        st.error(f"🚨 엑셀 변환 중 에러: {e}")
         return None
 
 # ---------------------------------------------------------
@@ -137,7 +142,7 @@ def main():
                 use_container_width=True
             )
             
-            # 엑셀 다운로드 (에러 발생 시 None 반환됨)
+            # 엑셀 다운로드
             excel_data = to_excel(scrap_df)
             
             if excel_data:
@@ -148,7 +153,6 @@ def main():
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary"
                 )
-            # 에러 메시지는 to_excel 함수 내부에서 st.error로 이미 출력됨
 
             if st.button("목록 초기화"):
                 st.session_state.scraps = []
