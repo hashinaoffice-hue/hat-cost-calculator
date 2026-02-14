@@ -14,78 +14,62 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# [디자인] CSS 스타일 (간격 및 여백 최적화)
+# [중요] 세션 상태 초기화 (앱 시작 시 가장 먼저 실행)
+# ---------------------------------------------------------
+if 'scraps' not in st.session_state:
+    st.session_state.scraps = []
+
+# ---------------------------------------------------------
+# [디자인] CSS 스타일
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* 폰트 설정 (Noto Sans KR) */
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
     
     html, body, [class*="css"] {
         font-family: 'Noto Sans KR', sans-serif;
         color: #333333;
     }
-
-    /* 포인트 컬러 설정 */
     :root {
-        --primary-color: #1a237e; /* 딥 네이비 */
-        --accent-color: #3949ab;  /* 밝은 네이비 */
+        --primary-color: #1a237e;
+        --accent-color: #3949ab;
         --bg-gray: #f5f7fa;
     }
-
-    /* 헤더 스타일 (간격 조정됨) */
     h1 {
         color: var(--primary-color) !important;
         font-weight: 700 !important;
         font-size: 34px !important;
         border-bottom: 2px solid #eee;
         padding-bottom: 15px;
-        margin-bottom: 20px; /* 제목 아래 여백 대폭 추가 */
+        margin-bottom: 20px;
     }
-    
-    /* 1. 제목 텍스트 설정 */
     h3 {
-        position: relative !important; /* 바 위치 기준점 */
+        position: relative !important;
         color: #444 !important;
         font-size: 20px !important;
         font-weight: 600 !important;
         margin-top: 5px !important;
         margin-bottom: 5px !important;
-        
-        /* 기존 border-left 삭제하고 아래로 대체 */
         border: none !important; 
-        
-        /* ★ [여백 조절] 파란 바와 글자 사이의 거리 */
         padding-left: 12px !important; 
-        
         line-height: 1.4 !important;
     }
-
-    /* 2. 파란색 바(Bar) 새로 그리기 - 길이/두께 조절 가능 */
     h3::before {
         content: "";
         position: absolute;
         left: 0;
-        top: 46%; /* 글자 높이의 중앙에 배치 */
-        transform: translateY(-50%); /* 정확한 수직 중앙 정렬 */
-        
-        /* ★ [파란 바 조절] 여기서 숫자만 바꾸세요 */
-        width: 5px;        /* 두께 */
-        height: 24px;      /* 길이 (높이) */
-        
-        background-color: var(--accent-color); /* 색상 (위에서 설정한 파란색) */
-        border-radius: 0px; /* 모서리를 살짝 둥글게 */
+        top: 46%;
+        transform: translateY(-50%);
+        width: 5px;
+        height: 24px;
+        background-color: var(--accent-color);
     }
-
-    /* 입력 필드 스타일 */
     .stTextInput > div > div > input, .stNumberInput > div > div > input {
         background-color: #fff;
         border-radius: 6px;
         border: 1px solid #ddd;
-        padding: 10px; /* 입력창 내부 여백 */
+        padding: 10px;
     }
-
-    /* 결과 카드 스타일 */
     .result-card {
         background-color: var(--primary-color);
         color: white;
@@ -95,71 +79,36 @@ st.markdown("""
         margin-bottom: 25px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
-    .result-card h2 {
-        color: #e0e0e0 !important;
-        margin: 0;
-        font-size: 16px;
-        font-weight: 400;
-    }
-    .result-card h1 {
-        color: white !important;
-        margin: 15px 0 0 0;
-        font-size: 42px !important; /* 숫자 크기 키움 */
-        border: none;
-        padding: 0;
-    }
-
-    /* 버튼 스타일 */
-    div.stButton > button {
-        width: 100%;
-        border-radius: 8px;
-        height: 50px; /* 버튼 높이 키움 */
-        font-weight: 600;
-        border: none;
-        background-color: #f0f2f5;
-        color: #333;
-        transition: all 0.2s;
-    }
-    div.stButton > button:hover {
-        background-color: #e0e0e0;
-        transform: translateY(-1px);
-    }
+    .result-card h2 { color: #e0e0e0 !important; margin: 0; font-size: 16px; font-weight: 400; }
+    .result-card h1 { color: white !important; margin: 15px 0 0 0; font-size: 42px !important; border: none; padding: 0; }
     
-    /* 저장하기 버튼 (Primary) */
-    div.stButton > button[kind="primary"] {
-        background-color: var(--primary-color);
-        color: white;
+    div.stButton > button {
+        width: 100%; border-radius: 8px; height: 50px; font-weight: 600; border: none; background-color: #f0f2f5; color: #333; transition: all 0.2s;
     }
-    div.stButton > button[kind="primary"]:hover {
-        background-color: var(--accent-color);
-        box-shadow: 0 4px 10px rgba(26, 35, 126, 0.2);
-    }
-
-    /* 데이터프레임 헤더 스타일 */
-    th {
-        background-color: #f8f9fa !important;
-        color: #555 !important;
-        font-weight: 600 !important;
-        border-bottom: 2px solid #ddd !important;
-    }
+    div.stButton > button:hover { background-color: #e0e0e0; transform: translateY(-1px); }
+    div.stButton > button[kind="primary"] { background-color: var(--primary-color); color: white; }
+    div.stButton > button[kind="primary"]:hover { background-color: var(--accent-color); box-shadow: 0 4px 10px rgba(26, 35, 126, 0.2); }
+    th { background-color: #f8f9fa !important; color: #555 !important; font-weight: 600 !important; border-bottom: 2px solid #ddd !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# [기능] 엑셀 변환 함수
+# [기능] 엑셀 변환 함수 (에러 방지 처리 추가)
 # ---------------------------------------------------------
 def to_excel(df):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='원가계산서')
-        workbook = writer.book
-        worksheet = writer.sheets['원가계산서']
-        header_fmt = workbook.add_format({'bold': True, 'fg_color': '#e9ecef', 'border': 1, 'align': 'center', 'vcenter': True})
-        
-        for col_num, value in enumerate(df.columns.values):
-            worksheet.write(0, col_num, value, header_fmt)
-            worksheet.set_column(col_num, col_num, 15)
-    return output.getvalue()
+    try:
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='원가계산서')
+            workbook = writer.book
+            worksheet = writer.sheets['원가계산서']
+            header_fmt = workbook.add_format({'bold': True, 'fg_color': '#e9ecef', 'border': 1, 'align': 'center', 'vcenter': True})
+            for col_num, value in enumerate(df.columns.values):
+                worksheet.write(0, col_num, value, header_fmt)
+                worksheet.set_column(col_num, col_num, 15)
+        return output.getvalue()
+    except Exception as e:
+        return None  # 에러 발생 시 None 반환
 
 # ---------------------------------------------------------
 # [메인] 앱 실행
@@ -168,24 +117,33 @@ def main():
     # 사이드바
     with st.sidebar:
         st.header("저장된 프로젝트")
-        if 'scraps' not in st.session_state:
-            st.session_state.scraps = []
         
+        # 저장된 데이터가 있는지 확인
         if len(st.session_state.scraps) > 0:
             st.caption(f"총 {len(st.session_state.scraps)}건 저장됨")
             scrap_df = pd.DataFrame(st.session_state.scraps)
+            
+            # 리스트 표시
             st.dataframe(
                 scrap_df[['상품명', '순이익', '마진율']], 
                 hide_index=True,
                 use_container_width=True
             )
-            st.download_button(
-                label="전체 내역 엑셀 다운로드",
-                data=to_excel(scrap_df),
-                file_name=f"Costing_Report_{datetime.date.today()}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                type="primary"
-            )
+            
+            # 엑셀 다운로드 (데이터 생성)
+            excel_data = to_excel(scrap_df)
+            
+            if excel_data:
+                st.download_button(
+                    label="전체 내역 엑셀 다운로드",
+                    data=excel_data,
+                    file_name=f"Costing_Report_{datetime.date.today()}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    type="primary"
+                )
+            else:
+                st.error("엑셀 라이브러리(xlsxwriter) 설치가 필요합니다.")
+
             if st.button("목록 초기화"):
                 st.session_state.scraps = []
                 st.rerun()
@@ -193,14 +151,11 @@ def main():
             st.info("계산 결과가 이곳에 저장됩니다.")
             
     # 메인 타이틀
-    st.title("모자 원가 관리 시스템")
+    st.title("SWORD 원가 관리 시스템")
 
-    # 5:5 레이아웃 분할
     col_input, col_result = st.columns(2, gap="large")
 
-    # =========================================================
     # [왼쪽] 데이터 입력
-    # =========================================================
     with col_input:
         st.subheader("기본 정보")
         c1, c2 = st.columns(2)
@@ -250,29 +205,20 @@ def main():
         
         labor_sum = sewing + embroidery + finish + logistics + fixed_per_unit
         total_cog = material_sum + labor_sum
-        
-        # 합계 표시
         st.info(f"자재비 {int(material_sum):,}원 + 공임비 {int(labor_sum):,}원 = 제조원가 {int(total_cog):,}원")
 
-    # =========================================================
     # [오른쪽] 분석 결과
-    # =========================================================
     with col_result:
         st.subheader("가격 및 수익 분석")
         
         target_price = st.number_input("판매 희망가 (KRW)", value=49000, step=1000)
         
-        # -----------------------------------------------------
-        # [추가된 기능] 배수(Multiplier) 자동 계산 및 표시
-        # -----------------------------------------------------
+        # [배수 계산]
         if total_cog > 0:
             multiplier = target_price / total_cog
         else:
             multiplier = 0
-            
-        # 조그만 글씨(caption)로 배수 표시
-        st.caption(f"원가({int(total_cog):,}원) 대비 **{multiplier:.1f}배수** 책정됨")
-        # -----------------------------------------------------
+        st.caption(f"📊 원가({int(total_cog):,}원) 대비 **{multiplier:.1f}배수** 책정됨")
 
         rc1, rc2 = st.columns(2)
         with rc1:
@@ -280,7 +226,6 @@ def main():
         with rc2:
             vat_on = st.toggle("VAT(10%) 포함", value=True)
 
-        # 수수료 로직
         fees_map = {"자사몰 (3.5%)": 0.035, "무신사 (30%)": 0.30, "스마트스토어 (6%)": 0.06, "백화점 (35%)": 0.35, "기타": 0.0}
         fee_rate = fees_map[channel]
         
@@ -293,10 +238,8 @@ def main():
         profit = target_price - total_cog - fee - vat
         margin = (profit / target_price) * 100 if target_price > 0 else 0
 
-        # 여백 추가
         st.markdown("<div style='margin-bottom: 30px;'></div>", unsafe_allow_html=True)
 
-        # 결과 카드
         st.markdown(f"""
         <div class="result-card">
             <h2>예상 순이익 (Net Profit)</h2>
@@ -313,11 +256,7 @@ def main():
             {"구분": "(-) 부가세", "금액": -vat, "비고": "10%"},
             {"구분": "(=) 순이익", "금액": profit, "비고": f"{margin:.1f}%"},
         ])
-        st.dataframe(
-            breakdown_df.style.format({"금액": "{:,.0f}원"}), 
-            hide_index=True, 
-            use_container_width=True
-        )
+        st.dataframe(breakdown_df.style.format({"금액": "{:,.0f}원"}), hide_index=True, use_container_width=True)
 
         st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
@@ -334,8 +273,13 @@ def main():
                 "마진율": f"{margin:.1f}%",
                 "저장일시": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
             }
+            # 세션에 추가
             st.session_state.scraps.append(scrap_item)
-            st.toast("저장이 완료되었습니다.", icon=None)
+            
+            # 알림 메시지
+            st.toast("저장되었습니다!", icon=None)
+            
+            # 약간의 딜레이 후 새로고침 (데이터 반영을 위해)
             time.sleep(0.5)
             st.rerun()
 
