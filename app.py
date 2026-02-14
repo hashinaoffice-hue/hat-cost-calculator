@@ -8,7 +8,7 @@ import time
 # [설정] 페이지 기본 설정
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="SWORD 원가 관리 시스템",
+    page_title="모자 원가 관리 시스템",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -318,3 +318,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
