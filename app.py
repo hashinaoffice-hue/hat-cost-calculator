@@ -31,8 +31,8 @@ st.markdown("""
         color: #333333;
     }
     :root {
-        --primary-color: #1a237e;
-        --accent-color: #3949ab;
+        --primary-color: #1a237e; /* 딥 네이비 */
+        --accent-color: #3949ab;  /* 밝은 네이비 (호버 색상) */
         --bg-gray: #f5f7fa;
     }
     h1 {
@@ -82,18 +82,46 @@ st.markdown("""
     .result-card h2 { color: #e0e0e0 !important; margin: 0; font-size: 16px; font-weight: 400; }
     .result-card h1 { color: white !important; margin: 15px 0 0 0; font-size: 42px !important; border: none; padding: 0; }
     
-    div.stButton > button {
-        width: 100%; border-radius: 8px; height: 50px; font-weight: 600; border: none; background-color: #f0f2f5; color: #333; transition: all 0.2s;
+    /* [버튼 스타일 통합] 일반 버튼 + 다운로드 버튼 */
+    div.stButton > button, 
+    div.stDownloadButton > button {
+        width: 100%; 
+        border-radius: 8px; 
+        height: 50px; 
+        font-weight: 600; 
+        border: none; 
+        background-color: #f0f2f5; 
+        color: #333; 
+        transition: all 0.2s;
     }
-    div.stButton > button:hover { background-color: #e0e0e0; transform: translateY(-1px); }
-    div.stButton > button[kind="primary"] { background-color: var(--primary-color); color: white; }
-    div.stButton > button[kind="primary"]:hover { background-color: var(--accent-color); box-shadow: 0 4px 10px rgba(26, 35, 126, 0.2); }
+    
+    div.stButton > button:hover,
+    div.stDownloadButton > button:hover { 
+        background-color: #e0e0e0; 
+        transform: translateY(-1px); 
+        color: #000;
+    }
+
+    /* [Primary 버튼 스타일] 저장 버튼 + 엑셀 다운로드 버튼 (파란색 적용) */
+    div.stButton > button[kind="primary"],
+    div.stDownloadButton > button {
+        background-color: var(--primary-color) !important; 
+        color: white !important;
+    }
+    
+    div.stButton > button[kind="primary"]:hover,
+    div.stDownloadButton > button:hover { 
+        background-color: var(--accent-color) !important; 
+        box-shadow: 0 4px 10px rgba(26, 35, 126, 0.2);
+        color: white !important;
+    }
+
     th { background-color: #f8f9fa !important; color: #555 !important; font-weight: 600 !important; border-bottom: 2px solid #ddd !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# [기능] 엑셀 변환 함수 (수정됨: vcenter -> valign)
+# [기능] 엑셀 변환 함수 (valign 수정 완료)
 # ---------------------------------------------------------
 def to_excel(df):
     try:
@@ -103,13 +131,12 @@ def to_excel(df):
             workbook = writer.book
             worksheet = writer.sheets['Sheet1']
             
-            # ★ 여기가 수정되었습니다! (vcenter -> valign)
             header_fmt = workbook.add_format({
                 'bold': True, 
                 'fg_color': '#e9ecef', 
                 'border': 1, 
                 'align': 'center', 
-                'valign': 'vcenter' 
+                'valign': 'vcenter'
             })
             
             for col_num, value in enumerate(df.columns.values):
@@ -146,12 +173,13 @@ def main():
             excel_data = to_excel(scrap_df)
             
             if excel_data:
+                # ★ 여기가 변경됨: type="primary"를 줘서 CSS가 파란색을 입히도록 함
                 st.download_button(
                     label="전체 내역 엑셀 다운로드",
                     data=excel_data,
                     file_name=f"Costing_Report_{datetime.date.today()}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    type="primary"
+                    type="primary" 
                 )
 
             if st.button("목록 초기화"):
