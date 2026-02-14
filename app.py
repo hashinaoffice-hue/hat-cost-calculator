@@ -189,7 +189,7 @@ def main():
             st.info("계산 결과가 이곳에 저장됩니다.")
             
     # 메인 타이틀
-    st.title("SWORD 원가 관리 시스템")
+    st.title("모자 원가 관리 시스템")
 
     col_input, col_result = st.columns(2, gap="large")
 
@@ -318,4 +318,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
