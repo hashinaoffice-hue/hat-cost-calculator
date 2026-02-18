@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HCMS</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HCMS">
+    <link rel="apple-touch-icon" href="logo.png">
+    
+    <link rel="manifest" id="manifest-placeholder">
+
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        // [PWA 매니페스트 생성기] HTML 실행 시 즉석에서 앱 정보를 만듭니다.
+        const manifest = {
+            "name": "모자 원가 관리 시스템 (HCMS)",
+            "short_name": "HCMS",
+            "start_url": ".",
+            "display": "standalone",
+            "background_color": "#1a237e",
+            "theme_color": "#1a237e",
+            "orientation": "portrait",
+            "icons": [
+                {
+                    "src": "logo.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                },
+                {
+                    "src": "logo.png",
+                    "sizes": "512x512",
+                    "type": "image/png"
+                }
+            ]
+        };
+        const stringManifest = JSON.stringify(manifest);
+        const blob = new Blob([stringManifest], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(blob);
+        document.querySelector('#manifest-placeholder').setAttribute('href', manifestURL);
+    </script>
+
+    <style>
+        /* 스타일은 이전과 동일하게 유지 */
+        :root { --primary: #1a237e; --accent: #3949ab; --bg: #f4f6f9; --border: #e1e4e8; --text: #333; --danger: #d32f2f; --sidebar-width: 280px; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; font-size: 13.5px; padding-top: 60px; }
+        
+        /* 설치 버튼 (PWA 전용) */
+        #installBtn {
+            display: none; width: 100%; background: #333; color: white; padding: 15px;
+            position: fixed; bottom: 0; left: 0; z-index: 9999; text-align: center; cursor: pointer;
+            font-weight: bold; font-size: 1rem;
+        }
+
+        /* (이하 기존 CSS 전체 포함) */
+        #loginScreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--primary); z-index: 2000; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; }
+        .login-box { text-align: center; padding: 30px; background: white; border-radius: 15px; width: 90%; max-width: 350px; color: #333; }
+        .google-btn { background: #4285F4; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 20px; }
+        .user-profile { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #666; margin-right: 10px; }
+        .user-avatar { width: 28px; height: 28px; border-radius: 50%; }
+        .app-header { position: fixed; top: 0; left: 0; right: 0; height: 55px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .menu-btn { font-size: 1.4rem; color: var(--primary); cursor: pointer; border: none; background: none; padding: 5px; }
+        .app-title { font-weight: 700; font-size: 1.1rem; color: var(--primary); margin: 0; }
+        .header-logo { width: 30px; height: 30px; border-radius: 6px; object-fit: cover; }
+        .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-width); background: white; z-index: 1002; transform: translateX(-100%); transition: transform 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        .sidebar.active { transform: translateX(0); }
+        .sidebar-header { padding: 20px 15px; background: var(--primary); color: white; display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-content { padding: 15px; overflow-y: auto; flex: 1; }
+        .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1001; opacity: 0; visibility: hidden; transition: 0.3s; }
+        .overlay.active { opacity: 1; visibility: visible; }
+        .container { max-width: 600px; margin: 0 auto; padding: 15px; }
+        .card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 15px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+        h3 { font-size: 0.95rem; color: #555; margin: 5px 0 12px 0; border-left: 4px solid var(--accent); padding-left: 10px; font-weight: 600; }
+        .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .input-group { flex: 1; margin-bottom: 10px; }
+        label { display: block; font-size: 0.8rem; color: #666; margin-bottom: 4px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; background: #fff; -webkit-appearance: none; }
+        input:focus { outline: none; border-color: var(--accent); }
+        .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; min-width: 300px; margin-bottom: 5px; }
+        th { background: #f8f9fa; font-size: 0.8rem; color: #666; padding: 8px; border: 1px solid var(--border); text-align: center; }
+        td { border: 1px solid var(--border); padding: 0; }
+        td input { border: none; text-align: center; padding: 8px; font-size: 0.9rem; }
+        .del-btn { color: #aaa; background: none; border: none; font-size: 1.1rem; padding: 0 10px; }
+        .del-btn:hover { color: var(--danger); }
+        .btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-size: 0.9rem; font-weight: 600; cursor: pointer; margin-top: 5px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-outline { background: white; border: 1px solid #ccc; color: #555; padding: 8px; font-size: 0.85rem; width: auto; }
+        .btn-sm { padding: 6px 10px; font-size: 0.8rem; margin-top: 0; }
+        .result-box { background: var(--primary); color: white; padding: 20px; border-radius: 10px; text-align: center; margin-top: 20px; box-shadow: 0 4px 10px rgba(26, 35, 126, 0.2); }
+        .result-box h1 { font-size: 2rem; margin: 5px 0 0 0; }
+        .result-box p { font-size: 0.9rem; opacity: 0.9; margin: 5px 0 0 0; }
+        .detail-table { margin-top: 15px; font-size: 0.9rem; }
+        .detail-table th { text-align: left; padding-left: 10px; background: white; border: none; border-bottom: 1px solid #eee; }
+        .detail-table td { text-align: right; padding-right: 10px; border: none; border-bottom: 1px solid #eee; font-weight: 500; }
+        .project-item { background: #f8f9fa; padding: 12px; border-radius: 6px; border: 1px solid #eee; margin-bottom: 8px; position: relative; }
+        .project-item h4 { margin: 0 0 4px 0; font-size: 0.9rem; color: var(--primary); }
+        .project-item p { margin: 0; font-size: 0.75rem; color: #888; }
+        .project-actions { margin-top: 8px; display: flex; gap: 5px; }
+        .scrap-item { background: white; border: 1px solid #eee; padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .scrap-info { font-size: 0.85rem; }
+        .scrap-price { font-weight: bold; color: var(--primary); }
+        .text-right { text-align: right; }
+        .bold { font-weight: 600; }
+        .text-primary { color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div id="installBtn">📲 앱으로 설치하기 (클릭)</div>
+
+    <div id="loginScreen">
+        <div class="login-box">
+            <img src="logo.png" alt="logo" style="width:60px; height:60px; border-radius:12px; margin-bottom:15px;" onerror="this.style.display='none'">
+            <h2>HCMS Cloud</h2>
+            <p style="font-size:0.9rem; color:#666;">PC ↔ 모바일 실시간 연동</p>
+            <button class="google-btn" onclick="googleLogin()">
+                <i class="fab fa-google"></i> 구글 계정으로 로그인
+            </button>
+        </div>
+    </div>
+
+    <div id="app" style="display:none;">
+        <header class="app-header">
+            <div class="header-left">
+                <button class="menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <img src="logo.png" class="header-logo" onerror="this.style.display='none'">
+                <h1 class="app-title">HCMS</h1>
+            </div>
+            <div style="display:flex; align-items:center;">
+                <div class="user-profile">
+                    <img id="userAvatar" class="user-avatar" src="">
+                </div>
+                <button onclick="saveInputSet()" style="background:none; border:none; color:var(--primary); font-weight:bold; font-size:0.9rem;">
+                    <i class="fas fa-save"></i> 저장
+                </button>
+            </div>
+        </header>
+
+        <div class="overlay" onclick="toggleSidebar()"></div>
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>💾 클라우드 프로젝트</h2>
+                <i class="fas fa-times close-btn" onclick="toggleSidebar()"></i>
+            </div>
+            <div class="sidebar-content">
+                <button class="btn btn-primary" onclick="saveInputSet()" style="margin-bottom:15px;">
+                    <i class="fas fa-cloud-upload-alt"></i> 현재 작업 저장
+                </button>
+                <div id="projectListContainer">
+                    <p style="text-align:center; color:#999; font-size:0.8rem; margin-top:20px;">불러오는 중...</p>
+                </div>
+                <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+                <button class="btn btn-outline" style="color:#666;" onclick="logout()">로그아웃</button>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="card">
+                <h3>기본 정보</h3>
+                <div class="input-group">
+                    <label>상품명</label>
+                    <input type="text" id="productName" value="2026 SS 시그니처 볼캡">
+                </div>
+                <div class="input-group">
+                    <label>생산 수량 (MOQ)</label>
+                    <input type="number" id="qty" value="100" inputmode="numeric" oninput="calculate()">
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3>원자재 (BOM)</h3>
+                    <button class="btn btn-outline btn-sm" onclick="addMaterialRow()">+ 추가</button>
+                </div>
+                <div class="table-wrapper">
+                    <table id="bomTable">
+                        <thead><tr><th style="text-align:left; padding-left:10px;">자재명</th><th width="60">단가</th><th width="45">요척</th><th width="30"></th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="text-right bold text-primary" style="font-size:0.85rem; margin-top:5px;">
+                    자재비 합계: <span id="matSumDisplay">0</span>원
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>공임 및 고정비</h3>
+                <div class="input-row">
+                    <div class="input-group"><label>봉제</label><input type="number" class="labor-input" value="6000" inputmode="numeric" oninput="calculate()"></div>
+                    <div class="input-group"><label>자수/나염</label><input type="number" class="labor-input" value="1500" inputmode="numeric" oninput="calculate()"></div>
+                </div>
+                <div class="input-row">
+                    <div class="input-group"><label>마감/포장</label><input type="number" class="labor-input" value="500" inputmode="numeric" oninput="calculate()"></div>
+                    <div class="input-group"><label>물류/기타</label><input type="number" class="labor-input" value="300" inputmode="numeric" oninput="calculate()"></div>
+                </div>
+                <div class="input-group"><label>패턴/샘플비 (전체 1/N)</label><input type="number" id="fixedCost" value="300000" inputmode="numeric" oninput="calculate()"></div>
+                <div class="text-right bold text-primary" style="font-size:0.85rem;">공임 합계: <span id="laborSumDisplay">0</span>원</div>
+            </div>
+
+            <div class="card">
+                <h3>가격 책정</h3>
+                <div class="input-group">
+                    <label>판매 희망가</label>
+                    <input type="number" id="targetPrice" value="49000" inputmode="numeric" oninput="calculate()" style="font-weight:bold; color:var(--primary);">
+                    <div id="multiplierDisplay" style="font-size:0.8rem; color:#666; margin-top:4px;">📊 원가 대비 0.0배수</div>
+                </div>
+                <label>판매 채널</label>
+                <div style="display:flex; gap:5px; margin-bottom:10px;">
+                    <select id="channel" onchange="calculate()" style="flex:1;"></select>
+                    <button class="btn btn-outline btn-sm" onclick="addChannel()">+</button>
+                    <button class="btn btn-outline btn-sm" style="color:var(--danger); border-color:var(--danger);" onclick="deleteChannel()">-</button>
+                </div>
+                <div style="display:flex; align-items:center; margin-bottom:10px;">
+                    <input type="checkbox" id="vatOn" checked onchange="calculate()" style="width:20px; height:20px; margin-right:8px; flex:none;">
+                    <label for="vatOn" style="margin:0;">VAT 포함</label>
+                </div>
+                <div class="result-box">
+                    <h2>예상 순이익</h2>
+                    <h1 id="netProfit">0원</h1>
+                    <p id="marginRate">마진율 0.0%</p>
+                </div>
+                <table class="detail-table">
+                    <tr><th>판매가</th><td id="t_price">0원</td></tr>
+                    <tr><th>(-) 제조원가</th><td id="t_cost" style="color:var(--danger);">0원</td></tr>
+                    <tr><th>(-) 수수료</th><td id="t_fee" style="color:var(--danger);">0원</td></tr>
+                    <tr><th>(-) 부가세</th><td id="t_vat" style="color:var(--danger);">0원</td></tr>
+                </table>
+                <button class="btn btn-primary" onclick="saveResultToScrap()" style="margin-top:15px;">
+                    <i class="fas fa-thumbtack"></i> 결과 스크랩
+                </button>
+            </div>
+
+            <div class="card" id="scrapSection">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h3>스크랩 리스트</h3>
+                    <button class="btn btn-outline btn-sm" style="color:var(--danger); border-color:#eee;" onclick="clearScrapData()">비우기</button>
+                </div>
+                <div id="scrapListContainer"></div>
+                <button class="btn btn-outline" style="margin-top:10px; width:100%;" onclick="downloadExcel()">
+                    <i class="fas fa-file-excel"></i> 엑셀 다운로드
+                </button>
+            </div>
+            <div style="height:30px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // ###############################################################
+        // [설정 1] 여기에 Firebase 콘솔에서 복사한 Config 코드를 붙여넣으세요!
+        // ###############################################################
+        const firebaseConfig = {
+            apiKey: "여기에_API_KEY_붙여넣기",
+            authDomain: "PROJECT_ID.firebaseapp.com",
+            projectId: "PROJECT_ID",
+            storageBucket: "PROJECT_ID.appspot.com",
+            messagingSenderId: "SENDER_ID",
+            appId: "APP_ID"
+        };
+        // ###############################################################
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        let currentUser = null;
+
+        // PWA 설치 버튼 로직
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const btn = document.getElementById('installBtn');
+            btn.style.display = 'block';
+            btn.addEventListener('click', () => {
+                btn.style.display = 'none';
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    deferredPrompt = null;
+                });
+            });
+        });
+
+        // 인증 상태 감지
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+                document.getElementById('userAvatar').src = user.photoURL;
+                startSync();
+            } else {
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('app').style.display = 'none';
+            }
+        });
+
+        function googleLogin() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(() => auth.signInWithRedirect(provider));
+        }
+
+        function logout() { auth.signOut(); location.reload(); }
+
+        // 동기화 변수
+        let projects = [];
+        let scrapList = [];
+        let customChannels = [];
+        const defaultMaterials = [
+            {name: "겉감", price: 4500, yield: 0.3}, {name: "챙심", price: 500, yield: 1.0},
+            {name: "땀받이", price: 800, yield: 1.0}, {name: "탑버튼/아일렛", price: 150, yield: 1.0},
+            {name: "메인 라벨", price: 120, yield: 1.0}, {name: "케어 라벨", price: 80, yield: 1.0},
+            {name: "폴리백/박스", price: 500, yield: 1.0}
+        ];
+        const defaultChannels = [
+            {name: "자사몰 (3.5%)", rate: 0.035}, {name: "무신사 (30%)", rate: 0.30},
+            {name: "스마트스토어 (6%)", rate: 0.06}, {name: "백화점 (35%)", rate: 0.35}
+        ];
+
+        function startSync() {
+            const uid = currentUser.uid;
+            db.collection('users').doc(uid).collection('projects').orderBy('id', 'desc').onSnapshot(snapshot => {
+                projects = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
+                renderProjectList();
+            });
+            db.collection('users').doc(uid).collection('scraps').orderBy('date', 'desc').onSnapshot(snapshot => {
+                scrapList = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
+                renderScrapList();
+            });
+            db.collection('users').doc(uid).collection('settings').doc('channels').onSnapshot(doc => {
+                if(doc.exists) customChannels = doc.data().list || [];
+                renderChannelOptions();
+                calculate();
+            });
+        }
+
+        // 저장 로직
+        function saveInputSet() {
+            if(!currentUser) return;
+            const pName = document.getElementById("productName").value;
+            const saveName = prompt("프로젝트 저장 이름:", pName);
+            if(!saveName) return;
+
+            const materials = [];
+            document.querySelectorAll("#bomTable tbody tr").forEach(row => {
+                materials.push({
+                    name: row.querySelector(".mat-name").value,
+                    price: row.querySelector(".mat-price").value,
+                    yield: row.querySelector(".mat-yield").value
+                });
+            });
+            const laborCosts = [];
+            document.querySelectorAll(".labor-input").forEach(input => laborCosts.push(input.value));
+
+            const project = {
+                id: Date.now(), title: saveName, productName: pName,
+                qty: document.getElementById("qty").value,
+                materials: materials, laborCosts: laborCosts,
+                fixedCost: document.getElementById("fixedCost").value,
+                targetPrice: document.getElementById("targetPrice").value,
+                channelRate: document.getElementById("channel").value,
+                vatOn: document.getElementById("vatOn").checked
+            };
+            db.collection('users').doc(currentUser.uid).collection('projects').add(project)
+                .then(() => { alert("저장 완료!"); toggleSidebar(); });
+        }
+
+        function deleteProject(fid, e) {
+            e.stopPropagation();
+            if(confirm("삭제하시겠습니까?")) db.collection('users').doc(currentUser.uid).collection('projects').doc(fid).delete();
+        }
+
+        function saveResultToScrap() {
+            if(!currentUser) return;
+            const sel = document.getElementById("channel");
+            const item = {
+                name: document.getElementById("productName").value,
+                channel: sel.options[sel.selectedIndex].text,
+                price: document.getElementById("targetPrice").value,
+                profit: document.getElementById("netProfit").innerText,
+                margin: document.getElementById("marginRate").innerText,
+                date: new Date().toISOString()
+            };
+            db.collection('users').doc(currentUser.uid).collection('scraps').add(item)
+                .then(() => { alert("스크랩 완료!"); document.getElementById("scrapSection").scrollIntoView({behavior:"smooth"}); });
+        }
+
+        function clearScrapData() {
+            if(!confirm("전체 삭제하시겠습니까?")) return;
+            const batch = db.batch();
+            scrapList.forEach(item => {
+                const ref = db.collection('users').doc(currentUser.uid).collection('scraps').doc(item.firebaseId);
+                batch.delete(ref);
+            });
+            batch.commit();
+        }
+
+        function updateChannelsInCloud() {
+            db.collection('users').doc(currentUser.uid).collection('settings').doc('channels').set({ list: customChannels });
+        }
+        function addChannel() {
+            const name = prompt("채널명"); if(!name) return;
+            const fee = prompt("수수료율 숫자만"); if(!fee) return;
+            customChannels.push({ name: `${name} (${fee}%)`, rate: Number(fee)/100 });
+            updateChannelsInCloud();
+        }
+        function deleteChannel() {
+            const select = document.getElementById("channel");
+            const selectedText = select.options[select.selectedIndex].text;
+            if(defaultChannels.some(c => c.name === selectedText)) { alert("기본 채널은 삭제 불가"); return; }
+            if(confirm("삭제하시겠습니까?")) {
+                customChannels = customChannels.filter(c => c.name !== selectedText);
+                updateChannelsInCloud();
+            }
+        }
+
+        // 렌더링 함수들
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.querySelector('.overlay').classList.toggle('active');
+        }
+        
+        renderChannelOptions();
+        defaultMaterials.forEach(m => addMaterialRow(m.name, m.price, m.yield));
+        calculate();
+
+        function addMaterialRow(name="", price=0, yieldVal=1.0) {
+            const tbody = document.querySelector("#bomTable tbody");
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td style="text-align:left;"><input type="text" class="mat-name" value="${name}" placeholder="자재명" style="text-align:left; padding-left:5px;"></td>
+                <td><input type="number" class="mat-price" value="${price}" inputmode="numeric" oninput="calculate()"></td>
+                <td><input type="number" class="mat-yield" value="${yieldVal}" inputmode="numeric" oninput="calculate()"></td>
+                <td><button class="del-btn" onclick="deleteRow(this)">×</button></td>
+            `;
+            tbody.appendChild(tr);
+            calculate();
+        }
+        function deleteRow(btn) { btn.closest("tr").remove(); calculate(); }
+
+        function renderChannelOptions() {
+            const select = document.getElementById("channel");
+            const currentVal = select.value;
+            select.innerHTML = "";
+            [...defaultChannels, ...customChannels].forEach(ch => {
+                const option = document.createElement("option");
+                option.text = ch.name;
+                option.value = ch.rate;
+                select.add(option);
+            });
+            if(currentVal && [...select.options].some(o => o.value == currentVal)) select.value = currentVal;
+            else select.selectedIndex = 0;
+        }
+
+        function renderProjectList() {
+            const con = document.getElementById("projectListContainer");
+            con.innerHTML = "";
+            if(projects.length === 0) { con.innerHTML = "<p style='color:#999; font-size:0.8rem;'>저장된 내역 없음</p>"; return; }
+            projects.forEach(p => {
+                const div = document.createElement("div");
+                div.className = "project-item";
+                div.onclick = () => loadProject(p);
+                div.innerHTML = `
+                    <h4>${p.title}</h4>
+                    <p>${p.productName} / ${Number(p.targetPrice).toLocaleString()}원</p>
+                    <div class="project-actions">
+                        <button class="btn btn-outline btn-sm" style="flex:1;">불러오기</button>
+                        <button class="btn btn-outline btn-sm" style="color:var(--danger); border-color:#eee;" onclick="deleteProject('${p.firebaseId}', event)">삭제</button>
+                    </div>
+                `;
+                con.appendChild(div);
+            });
+        }
+
+        function loadProject(p) {
+            if(!confirm(`[${p.title}] 불러오시겠습니까?`)) return;
+            document.getElementById("productName").value = p.productName;
+            document.getElementById("qty").value = p.qty;
+            document.getElementById("fixedCost").value = p.fixedCost;
+            document.getElementById("targetPrice").value = p.targetPrice;
+            document.getElementById("channel").value = p.channelRate;
+            document.getElementById("vatOn").checked = p.vatOn;
+            
+            const tbody = document.querySelector("#bomTable tbody");
+            tbody.innerHTML = "";
+            p.materials.forEach(m => addMaterialRow(m.name, m.price, m.yield));
+            
+            const laborInputs = document.querySelectorAll(".labor-input");
+            p.laborCosts.forEach((val, idx) => { if(laborInputs[idx]) laborInputs[idx].value = val; });
+            calculate();
+            toggleSidebar();
+        }
+
+        function renderScrapList() {
+            const con = document.getElementById("scrapListContainer");
+            con.innerHTML = "";
+            if(scrapList.length === 0) { con.innerHTML = "<p style='color:#ccc; text-align:center; font-size:0.8rem;'>스크랩 내역 없음</p>"; return; }
+            scrapList.forEach(item => {
+                const div = document.createElement("div");
+                div.className = "scrap-item";
+                div.innerHTML = `
+                    <div class="scrap-info">
+                        <div style="font-weight:bold;">${item.name}</div>
+                        <div style="color:#888; font-size:0.75rem;">${item.channel}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="scrap-price">${item.profit}</div>
+                        <div style="font-size:0.75rem; color:#555;">${item.margin}</div>
+                    </div>
+                `;
+                con.appendChild(div);
+            });
+        }
+
+        function calculate() {
+            let matSum = 0;
+            document.querySelectorAll("#bomTable tbody tr").forEach(row => {
+                matSum += (Number(row.querySelector(".mat-price").value)||0) * (Number(row.querySelector(".mat-yield").value)||0);
+            });
+            document.getElementById("matSumDisplay").innerText = Math.round(matSum).toLocaleString();
+            let laborSum = 0;
+            document.querySelectorAll(".labor-input").forEach(inp => laborSum += Number(inp.value));
+            const qty = Number(document.getElementById("qty").value)||1;
+            const fixed = Number(document.getElementById("fixedCost").value)/qty;
+            const totalLabor = laborSum + fixed;
+            document.getElementById("laborSumDisplay").innerText = Math.round(totalLabor).toLocaleString();
+            const totalCOG = matSum + totalLabor;
+            const target = Number(document.getElementById("targetPrice").value);
+            const mul = totalCOG > 0 ? target/totalCOG : 0;
+            document.getElementById("multiplierDisplay").innerText = `📊 원가(${Math.round(totalCOG).toLocaleString()}) 대비 ${mul.toFixed(1)}배수`;
+            const chRate = Number(document.getElementById("channel").value);
+            const isVat = document.getElementById("vatOn").checked;
+            const vat = isVat ? target - (target/1.1) : target*0.1;
+            const fee = target * chRate;
+            const profit = target - totalCOG - fee - vat;
+            const margin = target > 0 ? (profit/target)*100 : 0;
+            document.getElementById("netProfit").innerText = `${Math.round(profit).toLocaleString()}원`;
+            document.getElementById("marginRate").innerText = `마진율 ${margin.toFixed(1)}%`;
+            document.getElementById("t_price").innerText = target.toLocaleString() + "원";
+            document.getElementById("t_cost").innerText = "-" + Math.round(totalCOG).toLocaleString() + "원";
+            document.getElementById("t_fee").innerText = "-" + Math.round(fee).toLocaleString() + "원";
+            document.getElementById("t_vat").innerText = "-" + Math.round(vat).toLocaleString() + "원";
+        }
+
+        function downloadExcel() {
+            if(scrapList.length===0) { alert("데이터 없음"); return; }
+            const ws = XLSX.utils.json_to_sheet(scrapList);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "원가리스트");
+            XLSX.writeFile(wb, `HCMS_Cloud_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+    </script>
+</body>
+</html>
